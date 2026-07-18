@@ -69,6 +69,8 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const [webcamOn, setWebcamOn] = useState(false)
   const [micOn, setMicOn] = useState(false)
   const [bgPreset, setBgPreset] = useState('sunset')
+  const [customColor, setCustomColor] = useState('#ff6b6b')
+  const [customImage, setCustomImage] = useState(null)
   const [padding, setPadding] = useState(48)
   const [cornerRadius, setCornerRadius] = useState(16)
   const [zoomIntensity, setZoomIntensity] = useState(1.6)
@@ -86,11 +88,8 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const [formatId, setFormatId] = useState(supportedFormats[0]?.id || 'webm-vp9')
 
   // ---------------- build cached backdrop (bg gradient + soft shadow) ----------------
-  // This used to run every single frame (shadowBlur + gradient creation), which tanked
-  // frame rate and made recordings look shaky / slow-motion. Now it only rebuilds when
-  // the actual settings change.
-  function ensureBackdrop(outW, outH, vw, vh, pad, radius, preset) {
-    const key = `${outW}x${outH}-${pad}-${radius}-${preset}`
+  function ensureBackdrop(outW, outH, vw, vh, pad, radius, preset, cColor, cImg) {
+    const key = `${outW}x${outH}-${pad}-${radius}-${preset}-${cColor}-${cImg ? cImg.slice(-50) : ''}`
     if (backdropKeyRef.current === key && backdropCanvasRef.current) return backdropCanvasRef.current
     let bc = backdropCanvasRef.current
     if (!bc) { bc = document.createElement('canvas'); backdropCanvasRef.current = bc }
@@ -100,7 +99,21 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     bctx.clearRect(0, 0, outW, outH)
 
     const p = BG_PRESETS.find(b => b.id === preset)
-    if (p && p.id !== 'none') {
+    if (preset === 'custom-color') {
+      bctx.fillStyle = cColor
+      bctx.fillRect(0, 0, outW, outH)
+    } else if (preset === 'custom-image' && cImg) {
+      const img = new Image()
+      img.onload = () => {
+        const sx = outW / img.width, sy = outH / img.height, s = Math.max(sx, sy)
+        const ow = img.width * s, oh = img.height * s
+        bctx.drawImage(img, (outW - ow) / 2, (outH - oh) / 2, ow, oh)
+      }
+      img.src = cImg
+      // draw immediately if already loaded via cache
+      bctx.fillStyle = '#1a1a2e'
+      bctx.fillRect(0, 0, outW, outH)
+    } else if (p && p.id !== 'none') {
       const grad = bctx.createLinearGradient(0, 0, outW, outH)
       grad.addColorStop(0, p.from)
       grad.addColorStop(1, p.to)
@@ -192,7 +205,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     }
 
     // cheap: cached backdrop (background + shadow), only rebuilt on settings change
-    const backdrop = ensureBackdrop(outW, outH, vw, vh, pad, cornerRadius, bgPreset)
+    const backdrop = ensureBackdrop(outW, outH, vw, vh, pad, cornerRadius, bgPreset, customColor, customImage)
     ctx.clearRect(0, 0, outW, outH)
     ctx.drawImage(backdrop, 0, 0)
 
@@ -328,7 +341,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     }
 
     rafRef.current = requestAnimationFrame(draw)
-  }, [autoZoom, motionBlur, webcamOn, bgPreset, padding, cornerRadius, performanceMode])
+  }, [autoZoom, motionBlur, webcamOn, bgPreset, customColor, customImage, padding, cornerRadius, performanceMode])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw)
@@ -709,6 +722,15 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
                   title={p.id}
                 />
               ))}
+              <input type="color" value={customColor}
+                onChange={e => { setCustomColor(e.target.value); setBgPreset('custom-color') }}
+                className={`swatch-color ${bgPreset === 'custom-color' ? 'active' : ''}`}
+                title="Custom Color" />
+              <label className={`swatch-img ${bgPreset === 'custom-image' ? 'active' : ''}`}>
+                <input type="file" accept="image/*" hidden
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { setCustomImage(ev.target.result); setBgPreset('custom-image') }; r.readAsDataURL(f) }}} />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              </label>
             </div>
           </div>
           <div className="setting-group">
