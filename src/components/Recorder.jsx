@@ -52,7 +52,9 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const zoomIntensityRef = useRef(null)
   const ripplesRef = useRef([])
   const micAnalyserRef = useRef(null)
+  const audioCtxRef = useRef(null)
   const micLevelRef = useRef(0)
+  const lastMicUpdateRef = useRef(0)
   const pressedKeysRef = useRef(new Set())
   const keyHistoryRef = useRef([])
 
@@ -79,8 +81,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const [countdown, setCountdown] = useState(null)
   const [performanceMode, setPerformanceMode] = useState(false)
   const [qualityPreset, setQualityPreset] = useState('high')
-  const [camPipPos, setCamPipPos] = useState({ x: 24, y: 24 })
-  const dragRef = useRef(null)
+  const [micLevel, setMicLevel] = useState(0)
 
   zoomIntensityRef.current = zoomIntensity
 
@@ -311,6 +312,11 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
         sum += v * v
       }
       micLevelRef.current = Math.min(1, Math.sqrt(sum / data.length) / 128 * 3)
+      // throttle React state update to ~10fps
+      if (now - lastMicUpdateRef.current > 100) {
+        setMicLevel(micLevelRef.current)
+        lastMicUpdateRef.current = now
+      }
     }
 
     // ---------------- keystroke overlay ----------------
@@ -468,9 +474,14 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
         micAnalyserRef.current.disconnect()
         micAnalyserRef.current = null
       }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close()
+        audioCtxRef.current = null
+      }
       micStreamRef.current?.getTracks().forEach(t => t.stop())
       micStreamRef.current = null
       setMicOn(false)
+      setMicLevel(0)
       micLevelRef.current = 0
       return
     }
@@ -478,6 +489,8 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
       const mic = await navigator.mediaDevices.getUserMedia({ audio: true })
       micStreamRef.current = mic
       const audioCtx = new AudioContext()
+      if (audioCtx.state === 'suspended') await audioCtx.resume()
+      audioCtxRef.current = audioCtx
       const src = audioCtx.createMediaStreamSource(mic)
       const analyser = audioCtx.createAnalyser()
       analyser.fftSize = 256
@@ -498,17 +511,17 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     audioTracks.forEach(t => canvasStream.addTrack(t))
 
     chunksRef.current = []
-    const hasAudio = audioTracks.length > 0
     let fmt = FORMATS.find(f => f.id === formatId) || supportedFormats[0]
-    // if audio present, fall back to a codec that supports both
+    const hasAudio = audioTracks.length > 0
+    // When audio is present, use a codec that supports both audio+video.
+    // isTypeSupported lies for VP8 — it returns true for video-only but
+    // MediaRecorder.start throws when an audio track is attached.
     let mime = fmt.mime
     if (hasAudio) {
-      if (!MediaRecorder.isTypeSupported(mime)) {
-        // Try VP9 which supports audio
-        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'
-        else if (MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm'
-        else mime = 'video/webm'
-      }
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) mime = 'video/webm;codecs=vp8,opus'
+      else if (MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm'
+      else mime = 'video/webm'
     }
     const recorder = new MediaRecorder(canvasStream, { mimeType: mime, videoBitsPerSecond: q.bits })
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
@@ -627,6 +640,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     streamRef.current?.getTracks().forEach(t => t.stop())
     camStreamRef.current?.getTracks().forEach(t => t.stop())
     micStreamRef.current?.getTracks().forEach(t => t.stop())
+    audioCtxRef.current?.close()
   }, [])
 
   function fmt(s) {
@@ -679,9 +693,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
           <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
           <video ref={camVideoRef}
             className={`cam-preview ${webcamOn ? '' : 'cam-hidden'}`}
-            style={{ left: camPipPos.x, top: camPipPos.y }}
             muted playsInline
-            onMouseDown={e => { e.preventDefault(); const r = e.target.getBoundingClientRect(); dragRef.current = { ox: e.clientX - r.left, oy: e.clientY - r.top }; const move = (ev) => { setCamPipPos(p => ({ x: Math.max(0, ev.clientX - dragRef.current.ox), y: Math.max(0, ev.clientY - dragRef.current.oy) })) }; const up = () => { dragRef.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }; window.addEventListener('mousemove', move); window.addEventListener('mouseup', up) }}
           />
           <canvas ref={trailCanvasRef} style={{ display: 'none' }} />
         </div>
@@ -714,7 +726,11 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
             </button>
             {micOn && (
               <div className="mic-level">
-                <div className="mic-level-bar" style={{ scale: `1 ${micLevelRef.current}`, transformOrigin: 'bottom' }} />
+                <span className="mic-level-label">Mic</span>
+                <div className="mic-level-track">
+                  <div className={`mic-level-bar${micLevel > 0.7 ? ' loud' : ''}${micLevel > 0.9 ? ' clip' : ''}`}
+                    style={{ width: `${Math.round(micLevel * 100)}%` }} />
+                </div>
               </div>
             )}
           </div>
