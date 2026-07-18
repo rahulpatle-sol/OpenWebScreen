@@ -22,8 +22,8 @@ test('hero has start recording and features buttons', async ({ page }) => {
 test('nav links and dark mode toggle are visible on home', async ({ page }) => {
   await expect(page.locator('.nav-links')).toContainText('Features')
   await expect(page.locator('.nav-links')).toContainText('Studio')
-  await expect(page.locator('.nav-cta')).toContainText('Start Recording')
-  await expect(page.locator('.nav-icon-btn')).toHaveCount(1)
+  await expect(page.locator('.nav-links')).toContainText('About')
+  await expect(page.locator('.nav-icon-btn')).toHaveCount(2)
 })
 
 test('3D stage mock window renders on hero', async ({ page }) => {
@@ -54,34 +54,44 @@ test('scroll to features via anchor link', async ({ page }) => {
 })
 
 test('navigate to studio via nav link', async ({ page }) => {
-  await page.locator('.nav-links a').last().click()
+  await page.locator('.nav-links a').filter({ hasText: 'Studio' }).click()
   await expect(page.locator('h1')).toContainText('Recording Studio')
   await expect(page.locator('.record-btn')).toContainText('Share Screen')
 })
 
 test('navigate to studio via CTA button', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   await expect(page.locator('h1')).toContainText('Recording Studio')
 })
 
+test('navigate to features page', async ({ page }) => {
+  await page.locator('.nav-links a').filter({ hasText: 'Features' }).click()
+  await expect(page.locator('h2')).toContainText('No feature gates')
+})
+
+test('navigate to about page', async ({ page }) => {
+  await page.locator('.nav-links a').filter({ hasText: 'About' }).click()
+  await expect(page.locator('h2')).toContainText('Screen recording, reimagined')
+})
+
 test('studio page shows share screen prompt', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   await expect(page.locator('.stage-empty')).toContainText('Share Screen')
 })
 
 test('studio page has all control buttons visible', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   await expect(page.locator('.controls-left').first()).toBeVisible()
   await expect(page.locator('.icon-btn').first()).toBeVisible()
 })
 
 test('studio page has 8 settings groups (with quality, perf mode, reset)', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   await expect(page.locator('.setting-group')).toHaveCount(8)
 })
 
 test('background swatches are selectable', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   const swatches = page.locator('.swatch')
   await expect(swatches).toHaveCount(5)
   await swatches.nth(2).click()
@@ -89,7 +99,7 @@ test('background swatches are selectable', async ({ page }) => {
 })
 
 test('toggle switches work for auto-zoom and motion blur', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   const switches = page.locator('.switch')
   await switches.first().click()
   await expect(switches.first()).not.toHaveClass(/on/)
@@ -98,14 +108,14 @@ test('toggle switches work for auto-zoom and motion blur', async ({ page }) => {
 })
 
 test('padding slider adjusts value display', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   const slider = page.locator('.setting-group').nth(1).locator('input[type="range"]')
   await slider.fill('80')
   await expect(page.locator('.setting-group').nth(1).locator('label')).toContainText('80px')
 })
 
 test('hint row shows keyboard shortcuts', async ({ page }) => {
-  await page.locator('.btn-primary').click()
+  await page.locator('.btn-primary').first().click()
   await expect(page.locator('.hint').first()).toContainText('Space')
   await expect(page.locator('.hint').nth(2)).toContainText('Z')
   await expect(page.locator('.hint').nth(3)).toContainText('B')
@@ -121,9 +131,9 @@ test('brand and title are present', async ({ page }) => {
   await expect(page).toHaveTitle('OpenWebScreen — Free Online Screen Recorder | No Signup, Runs in Browser')
 })
 
-test('navigate back home from studio', async ({ page }) => {
-  await page.locator('.btn-primary').click()
-  await page.locator('.nav-cta').click()
+test('navigate back home from studio via brand click', async ({ page }) => {
+  await page.locator('.btn-primary').first().click()
+  await page.locator('.brand').click()
   await expect(page.locator('.hero')).toBeVisible()
 })
 
