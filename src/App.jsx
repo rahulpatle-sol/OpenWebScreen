@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import Lenis from 'lenis'
 import Hero3D from './components/Hero3D.jsx'
 import Features from './components/Features.jsx'
 import FeaturesPage from './components/FeaturesPage.jsx'
@@ -6,7 +9,10 @@ import Recorder from './components/Recorder.jsx'
 import Editor from './components/Editor.jsx'
 import Gallery from './components/Gallery.jsx'
 import AboutPage from './components/AboutPage.jsx'
-import { Moon, Sun, History, Menu, X } from 'lucide-react'
+import ThreeBackground from './components/ThreeBackground.jsx'
+import { Moon, Sun, History, Menu, X, Sparkles } from 'lucide-react'
+
+gsap.registerPlugin(ScrollTrigger)
 
 export default function App() {
   const [view, setView] = useState('home')
@@ -18,12 +24,55 @@ export default function App() {
   })
   const [mobileNav, setMobileNav] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('ows-toured'))
+  const mouseRef = useRef({ x: 0, y: 0 })
 
+  // Lenis smooth scroll
+  useEffect(() => {
+    if (view !== 'home') return
+    const lenis = new Lenis({ duration: 1.2, smoothWheel: true })
+    lenis.on('scroll', ScrollTrigger.update)
+    gsap.ticker.add((time) => lenis.raf(time * 1000))
+    gsap.ticker.lagSmoothing(0)
+    return () => { lenis.destroy(); gsap.ticker.lagSmoothing(0) }
+  }, [view])
+
+  // Scroll-triggered text animations on home
+  useEffect(() => {
+    if (view !== 'home') return
+    const ctx = gsap.context(() => {
+      gsap.from('.section-head h2', {
+        scrollTrigger: { trigger: '.section-head', start: 'top 80%', toggleActions: 'play none none reverse' },
+        y: 50, opacity: 0, duration: 0.8, ease: 'power3.out',
+      })
+      gsap.from('.card', {
+        scrollTrigger: { trigger: '.grid', start: 'top 85%', toggleActions: 'play none none reverse' },
+        y: 40, opacity: 0, duration: 0.6, stagger: 0.08, ease: 'power2.out',
+      })
+      gsap.from('.footer', {
+        scrollTrigger: { trigger: '.footer', start: 'top 95%', toggleActions: 'play none none reverse' },
+        y: 30, opacity: 0, duration: 0.7, ease: 'power2.out',
+      })
+    })
+    return () => ctx.revert()
+  }, [view])
+
+  // Mouse tracking for Three.js
+  useEffect(() => {
+    function move(e) {
+      mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2
+      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 2
+    }
+    window.addEventListener('mousemove', move)
+    return () => window.removeEventListener('mousemove', move)
+  }, [])
+
+  // Dark mode
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
     localStorage.setItem('ows-dark', darkMode)
   }, [darkMode])
 
+  // Persist recordings metadata
   useEffect(() => {
     localStorage.setItem('ows-recordings', JSON.stringify(recordings.map(r => ({ ...r, blob: null }))))
   }, [recordings])
@@ -49,13 +98,13 @@ export default function App() {
   }
 
   const isHome = view === 'home'
-  const showBackBtn = !isHome
 
   const navLinks = (
     <>
       <a href="#" className={isHome ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('home') }}>Home</a>
       <a href="#" className={view === 'features' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('features') }}>Features</a>
       <a href="#" className={view === 'studio' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('studio') }}>Studio</a>
+      <a href="#" className={view === 'gallery' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('gallery') }}>Gallery</a>
       <a href="#" className={view === 'about' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('about') }}>About</a>
     </>
   )
@@ -64,6 +113,7 @@ export default function App() {
     <div className="app">
       <div className="mesh-bg" />
       <div className="grain" />
+      {isHome && <ThreeBackground mouse={mouseRef} />}
 
       {showOnboarding && (
         <div className="onboarding-overlay" onClick={dismissOnboarding}>
@@ -89,12 +139,10 @@ export default function App() {
           OpenWebScreen
         </div>
 
-        <div className="nav-links">
-          {navLinks}
-        </div>
+        <div className="nav-links">{navLinks}</div>
 
         <div className="nav-right">
-          {showBackBtn && (
+          {!isHome && (
             <button className="nav-icon-btn studio-btn" onClick={() => navigate('studio')} title="Go to Studio">
               <History size={16} />
             </button>
@@ -113,6 +161,7 @@ export default function App() {
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('home'); setMobileNav(false) }}>Home</a>
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('features'); setMobileNav(false) }}>Features</a>
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('studio'); setMobileNav(false) }}>Studio</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('gallery'); setMobileNav(false) }}>Gallery</a>
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('about'); setMobileNav(false) }}>About</a>
           <hr />
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('privacy'); setMobileNav(false) }}>Privacy</a>
@@ -120,7 +169,7 @@ export default function App() {
         </div>
       )}
 
-      {view === 'home' && (
+      {isHome && (
         <>
           <div className="hero">
             <Hero3D onLaunch={() => navigate('studio')} />
@@ -132,6 +181,7 @@ export default function App() {
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('about') }}>About</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('features') }}>Features</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('studio') }}>Studio</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('gallery') }}>Gallery</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('privacy') }}>Privacy</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('terms') }}>Terms</a>
               <a href="https://github.com/rahulpatle-sol/OpenWebScreen/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>
@@ -143,6 +193,19 @@ export default function App() {
       {view === 'features' && <FeaturesPage />}
       {view === 'about' && <AboutPage />}
 
+      {view === 'gallery' && (
+        <div className="recorder-page">
+          <div className="recorder-head">
+            <h1>Recording Gallery</h1>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <span className="pill"><Sparkles size={12} /> {recordings.length} recordings</span>
+              <button className="nav-cta" onClick={() => navigate('studio')}>← Studio</button>
+            </div>
+          </div>
+          <Gallery recordings={recordings} onClear={clearHistory} />
+        </div>
+      )}
+
       {view === 'studio' && (
         <Recorder
           onEdit={(blob) => { setEditBlob(blob); setView('editor') }}
@@ -152,16 +215,6 @@ export default function App() {
 
       {view === 'editor' && editBlob && (
         <Editor blob={editBlob} onBack={() => navigate('studio')} />
-      )}
-
-      {view === 'gallery' && (
-        <div className="recorder-page">
-          <div className="recorder-head">
-            <h1>Recording History</h1>
-            <button className="nav-cta" onClick={() => navigate('studio')}>← Back to Studio</button>
-          </div>
-          <Gallery recordings={recordings} onClear={clearHistory} />
-        </div>
       )}
 
       {view === 'privacy' && (
