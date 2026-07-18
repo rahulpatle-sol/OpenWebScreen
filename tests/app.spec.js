@@ -22,15 +22,14 @@ test('hero has start recording and features buttons', async ({ page }) => {
 test('nav links and dark mode toggle are visible on home', async ({ page }) => {
   await expect(page.locator('.nav-links')).toContainText('Features')
   await expect(page.locator('.nav-links')).toContainText('Studio')
+  await expect(page.locator('.nav-links')).toContainText('Gallery')
   await expect(page.locator('.nav-links')).toContainText('About')
   await expect(page.locator('.nav-icon-btn')).toHaveCount(2)
 })
 
-test('3D stage mock window renders on hero', async ({ page }) => {
-  await expect(page.locator('.stage')).toBeVisible()
-  await expect(page.locator('.mock-window')).toBeVisible()
-  await expect(page.locator('.mock-titlebar')).toBeVisible()
-  await expect(page.locator('.mock-canvas')).toBeVisible()
+test('hero3d canvas wrapper is present', async ({ page }) => {
+  await expect(page.locator('.hero3d')).toBeVisible()
+  await expect(page.locator('.hero3d-canvas-wrap')).toBeVisible()
 })
 
 test('all 9 feature cards are rendered', async ({ page }) => {
@@ -134,7 +133,7 @@ test('brand and title are present', async ({ page }) => {
 test('navigate back home from studio via brand click', async ({ page }) => {
   await page.locator('.btn-primary').first().click()
   await page.locator('.brand').click()
-  await expect(page.locator('.hero')).toBeVisible()
+  await expect(page.locator('.hero3d')).toBeVisible()
 })
 
 test('section head renders on features', async ({ page }) => {
