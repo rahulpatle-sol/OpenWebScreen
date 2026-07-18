@@ -605,6 +605,16 @@ a { color: inherit; text-decoration: none; }
   background: #ff4444;
   animation: pulse 1.2s ease-in-out infinite;
 }
+.cam-preview {
+  position: absolute;
+  bottom: 16px; right: 16px;
+  width: 160px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  object-fit: cover;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
 .controls-bar {

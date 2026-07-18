@@ -489,11 +489,22 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     audioTracks.forEach(t => canvasStream.addTrack(t))
 
     chunksRef.current = []
-    const fmt = FORMATS.find(f => f.id === formatId) || supportedFormats[0]
-    const recorder = new MediaRecorder(canvasStream, { mimeType: fmt.mime, videoBitsPerSecond: q.bits })
+    const hasAudio = audioTracks.length > 0
+    let fmt = FORMATS.find(f => f.id === formatId) || supportedFormats[0]
+    // if audio present, fall back to a codec that supports both
+    let mime = fmt.mime
+    if (hasAudio) {
+      if (!MediaRecorder.isTypeSupported(mime)) {
+        // Try VP9 which supports audio
+        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'
+        else if (MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm'
+        else mime = 'video/webm'
+      }
+    }
+    const recorder = new MediaRecorder(canvasStream, { mimeType: mime, videoBitsPerSecond: q.bits })
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: fmt.mime.split(';')[0] })
+      const blob = new Blob(chunksRef.current, { type: mime.split(';')[0] })
       const url = URL.createObjectURL(blob)
       setDownloadUrl(url)
       setDownloadSize(blob.size)
@@ -657,7 +668,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
             </div>
           )}
           <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
-          <video ref={camVideoRef} style={{ display: 'none' }} muted playsInline />
+          {webcamOn && <video ref={camVideoRef} className="cam-preview" muted playsInline />}
           <canvas ref={trailCanvasRef} style={{ display: 'none' }} />
         </div>
 
