@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import {
   Monitor, Circle, Square, Pause, Play, Camera, CameraOff,
-  Mic, MicOff, Download, Scissors,
+  Mic, MicOff, Download, Scissors, Zap, RotateCcw,
 } from 'lucide-react'
 
 const BG_PRESETS = [
@@ -20,7 +20,13 @@ const FORMATS = [
 
 function lerp(a, b, t) { return a + (b - a) * t }
 
-export default function Recorder({ onEdit }) {
+const QUALITY_MAP = {
+  high: { bits: 8_000_000, fps: 30, label: 'High (recommended)' },
+  medium: { bits: 3_500_000, fps: 24, label: 'Medium' },
+  low: { bits: 1_200_000, fps: 20, label: 'Low (fast)' },
+}
+
+export default function Recorder({ onEdit, onRecordingComplete }) {
   const videoRef = useRef(null)
   const camVideoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -47,6 +53,8 @@ export default function Recorder({ onEdit }) {
   const ripplesRef = useRef([])
   const micAnalyserRef = useRef(null)
   const micLevelRef = useRef(0)
+  const pressedKeysRef = useRef(new Set())
+  const keyHistoryRef = useRef([])
 
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -67,6 +75,8 @@ export default function Recorder({ onEdit }) {
   const [isLoading, setIsLoading] = useState(false)
   const [toast, setToast] = useState(null)
   const [countdown, setCountdown] = useState(null)
+  const [performanceMode, setPerformanceMode] = useState(false)
+  const [qualityPreset, setQualityPreset] = useState('high')
 
   zoomIntensityRef.current = zoomIntensity
 
@@ -175,7 +185,7 @@ export default function Recorder({ onEdit }) {
 
     // snapshot last fully-composited frame BEFORE we overwrite the canvas,
     // used for the motion-blur ghost trail
-    if (motionBlur) {
+    if (motionBlur && !performanceMode) {
       const trail = trailCanvasRef.current
       if (trail.width !== outW || trail.height !== outH) { trail.width = outW; trail.height = outH }
       trail.getContext('2d').drawImage(canvas, 0, 0)
@@ -288,8 +298,37 @@ export default function Recorder({ onEdit }) {
       micLevelRef.current = Math.min(1, Math.sqrt(sum / data.length) / 128 * 3)
     }
 
+    // ---------------- keystroke overlay ----------------
+    const keys = keyHistoryRef.current
+    const cutoff = now - 2000
+    let firstAlive = 0
+    while (firstAlive < keys.length && keys[firstAlive].time < cutoff) { firstAlive++ }
+    if (firstAlive > 0) keys.splice(0, firstAlive)
+    if (keys.length > 0) {
+      const barH = 40
+      const barY = outH - barH - 8
+      ctx.save()
+      ctx.globalAlpha = 0.7
+      ctx.fillStyle = '#1a1a1a'
+      roundRectPath(ctx, pad + 4, barY, vw - 8, barH, 8)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 15px Inter, sans-serif'
+      ctx.textAlign = 'center'
+      const visible = keys.filter(k => now - k.time < 1600)
+      const step = (vw - 16) / Math.min(visible.length + 1, 10)
+      visible.slice(-10).forEach((k, i) => {
+        const x = pad + 8 + step * (i + 1)
+        const age = (now - k.time) / 1600
+        ctx.globalAlpha = 1 - age * 0.6
+        ctx.fillText(k.key, x, barY + 26)
+      })
+      ctx.restore()
+    }
+
     rafRef.current = requestAnimationFrame(draw)
-  }, [autoZoom, motionBlur, webcamOn, bgPreset, padding, cornerRadius])
+  }, [autoZoom, motionBlur, webcamOn, bgPreset, padding, cornerRadius, performanceMode])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw)
@@ -429,7 +468,8 @@ export default function Recorder({ onEdit }) {
   }
 
   function beginRecording() {
-    const canvasStream = canvasRef.current.captureStream(30)
+    const q = QUALITY_MAP[qualityPreset] || QUALITY_MAP.high
+    const canvasStream = canvasRef.current.captureStream(q.fps)
     const audioTracks = []
     if (streamRef.current) audioTracks.push(...streamRef.current.getAudioTracks())
     if (micStreamRef.current) audioTracks.push(...micStreamRef.current.getAudioTracks())
@@ -437,7 +477,7 @@ export default function Recorder({ onEdit }) {
 
     chunksRef.current = []
     const fmt = FORMATS.find(f => f.id === formatId) || supportedFormats[0]
-    const recorder = new MediaRecorder(canvasStream, { mimeType: fmt.mime, videoBitsPerSecond: 8_000_000 })
+    const recorder = new MediaRecorder(canvasStream, { mimeType: fmt.mime, videoBitsPerSecond: q.bits })
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: fmt.mime.split(';')[0] })
@@ -445,6 +485,9 @@ export default function Recorder({ onEdit }) {
       setDownloadUrl(url)
       setDownloadSize(blob.size)
       setRecordedBlob(blob)
+      if (onRecordingComplete) {
+        onRecordingComplete({ blob, size: blob.size, format: fmt.ext, date: Date.now() })
+      }
     }
     recorder.start(250)
     recorderRef.current = recorder
@@ -480,6 +523,18 @@ export default function Recorder({ onEdit }) {
     setIsPaused(p => !p)
   }
 
+  function resetSettings() {
+    setBgPreset('sunset')
+    setPadding(48)
+    setCornerRadius(16)
+    setZoomIntensity(1.6)
+    setAutoZoom(true)
+    setMotionBlur(true)
+    setPerformanceMode(false)
+    setQualityPreset('high')
+    showToast('Settings reset to defaults', 'success')
+  }
+
   function stopRecording() {
     recorderRef.current?.stop()
     clearInterval(timerRef.current)
@@ -510,6 +565,28 @@ export default function Recorder({ onEdit }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [hasStream, isRecording])
+
+  // ---------------- keystroke overlay (record pressed keys) ----------------
+  useEffect(() => {
+    function onKeyDown(e) {
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key
+      if (key === ' ' || key === 'Space') return
+      if (pressedKeysRef.current.has(key)) return
+      pressedKeysRef.current.add(key)
+      const now = performance.now()
+      keyHistoryRef.current.push({ key, time: now })
+    }
+    function onKeyUp(e) {
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key
+      pressedKeysRef.current.delete(key)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
 
   useEffect(() => () => {
     clearInterval(timerRef.current)
@@ -656,6 +733,29 @@ export default function Recorder({ onEdit }) {
               {supportedFormats.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
             </select>
           </div>
+          <div className="setting-group">
+            <label>Quality</label>
+            <select className="select" value={qualityPreset}
+              onChange={e => setQualityPreset(e.target.value)}>
+              {Object.entries(QUALITY_MAP).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="setting-group">
+            <label className="toggle" style={{ justifyContent: 'space-between', width: '100%' }}>
+              <span>Performance Mode</span>
+              <span className={`switch ${performanceMode ? 'on' : ''}`} onClick={() => setPerformanceMode(p => !p)}>
+                <span className="switch-knob" />
+              </span>
+            </label>
+            {performanceMode && <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 6 }}>Disables motion blur, pixel effects &amp; tracking for smooth recording on low-end PCs</p>}
+          </div>
+          <div className="setting-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button className="btn-ghost" onClick={resetSettings} style={{ fontSize: 13, padding: '10px 18px', width: '100%' }}>
+              <RotateCcw size={13} /> Reset to Defaults
+            </button>
+          </div>
         </div>
 
         {downloadUrl && (
@@ -674,18 +774,18 @@ export default function Recorder({ onEdit }) {
       </div>
 
       {toast && (
-        <div className={`toast toast-${toast.type}`}>
+        <div className={`toast ${toast.type === 'success' ? 'toast-success' : 'toast-error'}`}>
           {toast.message}
         </div>
       )}
 
       <div className="hint-row">
-        <span className="hint">Space — start/stop recording</span>
+        <span className="hint">Space — start/stop</span>
         <span className="hint">P — pause/resume</span>
-        <span className="hint">Z — toggle auto-zoom</span>
-        <span className="hint">B — toggle motion blur</span>
-        <span className="hint">Click canvas — manual zoom-to-point</span>
-        <span className="hint">Drag webcam bubble to reposition</span>
+        <span className="hint">Z — toggle zoom</span>
+        <span className="hint">B — toggle blur</span>
+        <span className="hint">Click canvas — zoom-to-point</span>
+        <span className="hint">Keystrokes shown live on video</span>
       </div>
     </div>
   )

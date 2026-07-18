@@ -17,6 +17,20 @@
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+.dark {
+  --bg: #131416;
+  --bg-deep: #0e0f13;
+  --surface: rgba(30, 32, 38, 0.7);
+  --surface-solid: #1c1d22;
+  --border: rgba(255, 255, 255, 0.07);
+  --ink: #eeeff1;
+  --ink-soft: #999ca8;
+  --ink-faint: #5f6370;
+  --accent-soft: rgba(255, 90, 60, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-lg: 0 20px 60px -15px rgba(0,0,0,0.5);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {
@@ -688,6 +702,155 @@ a { color: inherit; text-decoration: none; }
   background: var(--accent);
   border-radius: inherit;
   transition: scale 0.08s ease;
+}
+
+/* ---------- success toast ---------- */
+.toast-success {
+  background: #22a67e;
+}
+
+/* ---------- nav icon button ---------- */
+.nav-icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  transition: transform 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+.nav-icon-btn:hover { transform: scale(1.08); background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- onboarding ---------- */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+  padding: 20px;
+}
+.onboarding-card {
+  max-width: 420px;
+  width: 100%;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: var(--shadow-lg);
+}
+.onboarding-card h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: 18px;
+}
+.onboarding-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboarding-card li {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  padding-left: 18px;
+  position: relative;
+}
+.onboarding-card li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ---------- gallery ---------- */
+.gallery-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.gallery-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.gallery-head h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+}
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.gallery-card {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.gallery-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.gallery-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  display: block;
+  background: #0e0f13;
+}
+.gallery-info {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.gallery-actions {
+  padding: 0 14px 12px;
+  display: flex;
+  gap: 8px;
+}
+.gallery-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  transition: transform 0.2s, background 0.2s;
+}
+.gallery-btn:hover { transform: scale(1.1); background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- legal text ---------- */
+.legal-text {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+.legal-text p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
 }
 
 /* ---------- footer ---------- */
