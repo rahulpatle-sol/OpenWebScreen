@@ -186,48 +186,100 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-cta:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
-/* ---------- hero (3D R3F) ---------- */
-.hero3d {
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
+/* ---------- hero (simple CSS 3D laptop) ---------- */
+.hero3d-simple-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   overflow: hidden;
+  width: 100%;
 }
 .hero3d-content {
-  position: relative;
-  z-index: 3;
-  padding: 160px 24px 0;
+  padding: 140px 24px 0;
   max-width: 780px;
-  pointer-events: none;
 }
-.hero3d-content > * { pointer-events: auto; }
-.hero3d-canvas-wrap {
-  position: relative;
-  z-index: 1;
+.hero3d-content h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(44px, 7vw, 84px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
+  margin: 0 auto;
+}
+.hero3d-content h1 em { font-style: italic; color: var(--accent); }
+.hero3d-content p {
+  margin: 24px auto 0;
+  font-size: 18px;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  line-height: 1.6;
+}
+
+/* Simple 3D Laptop Stage */
+.laptop-stage {
   width: 100%;
-  flex: 1;
-  min-height: 450px;
-  margin-top: -40px;
-}
-.hero3d-loader {
+  max-width: 720px;
+  margin: 60px auto 0;
+  perspective: 1800px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-faint);
-  font-size: 13px;
-  font-family: monospace;
+  justify-content: center;
 }
-.hero3d-loader-bar {
-  width: 120px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 0.3s;
+.simple-laptop {
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 16/10;
+  position: relative;
+  transform-style: preserve-3d;
+}
+.simple-lid {
+  position: absolute;
+  inset: 0;
+  background: #1c1c1e;
+  border: 10px solid #0a0a0a;
+  border-bottom: 14px solid #0a0a0a;
+  border-radius: 14px 14px 0 0;
+  transform-origin: bottom;
+  transform-style: preserve-3d;
+  transform: rotateX(-95deg);
+  box-shadow: 0 0 0 2px #555, inset 0 0 30px rgba(0,0,0,0.9);
+}
+.simple-screen {
+  width: 100%;
+  height: 100%;
+  background: #0a0a0f;
+  overflow: hidden;
+  border-radius: 4px;
+  position: relative;
+}
+.simple-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.simple-base {
+  position: absolute;
+  bottom: -32px;
+  left: -4%;
+  width: 108%;
+  height: 32px;
+  background: linear-gradient(to bottom, #d1d1d6, #e5e5e7);
+  border-radius: 0 0 10px 10px;
+  transform-origin: top;
+  transform: rotateX(90deg);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.simple-trackpad {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 22%;
+  height: 40%;
+  background: rgba(0,0,0,0.06);
+  border-radius: 3px;
+  transform: translateX(-50%);
 }
 
 .eyebrow {
@@ -1120,7 +1172,8 @@ a { color: inherit; text-decoration: none; }
   .mobile-menu-btn { display: flex !important; }
   .studio-btn { display: none !important; }
   .hero3d-content { padding: 130px 20px 0; }
-  .hero3d-canvas-wrap { min-height: 350px; margin-top: -20px; }
+  .laptop-stage { margin: 40px auto 0; }
+  .simple-laptop { max-width: 420px; }
   .section { padding: 70px 20px; }
   .recorder-page { padding: 110px 20px 60px; }
 }
