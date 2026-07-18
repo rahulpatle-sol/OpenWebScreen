@@ -219,9 +219,9 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     const targetScale = active ? t.scale : 1
     const targetX = active ? t.x : 0.5
     const targetY = active ? t.y : 0.5
-    z.scale = lerp(z.scale, targetScale, 0.08)
-    z.x = lerp(z.x, targetX, 0.08)
-    z.y = lerp(z.y, targetY, 0.08)
+    z.scale = lerp(z.scale, targetScale, 0.1)
+    z.x = lerp(z.x, targetX, 0.1)
+    z.y = lerp(z.y, targetY, 0.1)
 
     ctx.save()
     roundRectPath(ctx, pad, pad, vw, vh, cornerRadius)
@@ -351,34 +351,41 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   }, [draw])
 
   // ---------------- cursor -> zoom target (deadzone stops jitter) ----------------
+  const autoZoomRef = useRef(autoZoom)
+  autoZoomRef.current = autoZoom
+  const zoomIntRef = useRef(zoomIntensity)
+  zoomIntRef.current = zoomIntensity
+  const hasStreamRef = useRef(false)
+  hasStreamRef.current = hasStream
+
   useEffect(() => {
     function onMove(e) {
-      if (!autoZoom) return
+      if (!autoZoomRef.current || !hasStreamRef.current) return
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
+      if (rect.width === 0 || rect.height === 0) return
       const nx = (e.clientX - rect.left) / rect.width
       const ny = (e.clientY - rect.top) / rect.height
       if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return
       const last = lastMouseRef.current
-      const dist = Math.hypot(nx - last.x, ny - last.y)
-      if (dist < 0.015) return
+      if (Math.hypot(nx - last.x, ny - last.y) < 0.008) return
       lastMouseRef.current = { x: nx, y: ny }
-      zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntensity }
-      zoomUntilRef.current = performance.now() + 1400
+      zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntRef.current }
+      zoomUntilRef.current = performance.now() + 1800
       lastDomMouseRef.current = performance.now()
     }
     window.addEventListener('mousemove', onMove)
     return () => window.removeEventListener('mousemove', onMove)
-  }, [autoZoom, zoomIntensity])
+  }, [])
 
   function handleCanvasClick(e) {
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
     const nx = (e.clientX - rect.left) / rect.width
     const ny = (e.clientY - rect.top) / rect.height
-    zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntensity }
-    zoomUntilRef.current = performance.now() + 2200
+    zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntRef.current }
+    zoomUntilRef.current = performance.now() + 2500
     ripplesRef.current.push({ x: nx, y: ny, time: performance.now() })
   }
 
