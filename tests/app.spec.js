@@ -128,7 +128,7 @@ test('footer credit is visible on home', async ({ page }) => {
 
 test('brand and title are present', async ({ page }) => {
   await expect(page.locator('.brand')).toContainText('OpenWebScreen')
-  await expect(page).toHaveTitle('OpenWebScreen — Free Online Screen Recorder | No Signup, Runs in Browser')
+  await expect(page).toHaveTitle('OpenWebScreen — Free Online Screen Recorder | No Signup, 100% Browser-Based')
 })
 
 test('navigate back home from studio via brand click', async ({ page }) => {
