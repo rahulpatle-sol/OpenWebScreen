@@ -79,6 +79,8 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const [countdown, setCountdown] = useState(null)
   const [performanceMode, setPerformanceMode] = useState(false)
   const [qualityPreset, setQualityPreset] = useState('high')
+  const [camPipPos, setCamPipPos] = useState({ x: 24, y: 24 })
+  const dragRef = useRef(null)
 
   zoomIntensityRef.current = zoomIntensity
 
@@ -668,7 +670,12 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
             </div>
           )}
           <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
-          {webcamOn && <video ref={camVideoRef} className="cam-preview" muted playsInline />}
+          <video ref={camVideoRef}
+            className={`cam-preview ${webcamOn ? '' : 'cam-hidden'}`}
+            style={{ left: camPipPos.x, top: camPipPos.y }}
+            muted playsInline
+            onMouseDown={e => { e.preventDefault(); const r = e.target.getBoundingClientRect(); dragRef.current = { ox: e.clientX - r.left, oy: e.clientY - r.top }; const move = (ev) => { setCamPipPos(p => ({ x: Math.max(0, ev.clientX - dragRef.current.ox), y: Math.max(0, ev.clientY - dragRef.current.oy) })) }; const up = () => { dragRef.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }; window.addEventListener('mousemove', move); window.addEventListener('mouseup', up) }}
+          />
           <canvas ref={trailCanvasRef} style={{ display: 'none' }} />
         </div>
 

@@ -607,14 +607,16 @@ a { color: inherit; text-decoration: none; }
 }
 .cam-preview {
   position: absolute;
-  bottom: 16px; right: 16px;
   width: 160px;
   border-radius: 10px;
   border: 2px solid var(--border);
   object-fit: cover;
-  pointer-events: none;
+  cursor: grab;
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  transition: box-shadow 0.2s;
 }
+.cam-preview:active { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+.cam-hidden { display: none; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
 .controls-bar {
