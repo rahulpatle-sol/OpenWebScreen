@@ -31,7 +31,7 @@
   --shadow-lg: 0 20px 60px -15px rgba(0,0,0,0.5);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html, body, #root {
   height: 100%;
@@ -129,12 +129,28 @@ a { color: inherit; text-decoration: none; }
   color: var(--ink-soft);
   font-weight: 500;
 }
-.nav-links a:hover { color: var(--ink); }
-.nav-links a.active { color: var(--ink); }
+.nav-links button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink-soft);
+  font-weight: 500;
+  padding: 0;
+  transition: color 0.2s;
+}
+.nav-links button:hover { color: var(--ink); }
+.nav-links button.active { color: var(--ink); }
 .nav-right { display: flex; gap: 8px; align-items: center; }
 .mobile-menu-btn { display: none !important; }
+.nav-actions { display: flex; align-items: center; gap: 8px; }
 
 /* ---------- mobile nav ---------- */
+.nav-open .nav-links { display: none; }
+@media (max-width: 800px) {
+  .nav-open .nav-links { display: none; }
+}
+
 .mobile-nav {
   position: fixed;
   top: 72px;
@@ -558,6 +574,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
 }
 
 .studio-stage canvas, .studio-stage video {
@@ -1223,7 +1240,9 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 800px) {
   .grid { grid-template-columns: 1fr; }
+  .nav { padding: 14px 16px; }
   .nav-links { display: none; }
+  .nav-actions .icon-btn:first-child { display: none; }
   .mobile-menu-btn { display: flex !important; }
   .studio-btn { display: none !important; }
   .hero-simple { padding: 110px 16px 60px; }
@@ -1231,7 +1250,7 @@ a { color: inherit; text-decoration: none; }
   .mock-sidebar, .mock-toolbar { display: none; }
   .mock-content { padding: 24px; }
   .section { padding: 70px 20px; }
-  .recorder-page { padding: 110px 20px 60px; }
+  .recorder-page { padding: 110px 16px 40px; }
   .studio { flex-direction: column; }
   .settings-panel { width: 100%; max-width: 100%; }
   .controls-bar {
@@ -1249,13 +1268,49 @@ a { color: inherit; text-decoration: none; }
   .color-row { flex-wrap: wrap; }
   .recorder-head { flex-direction: column; text-align: center; gap: 8px; }
   .features-grid { grid-template-columns: 1fr; }
-  .feature-card { padding: 28px; }
-  .about-page { padding: 110px 20px 60px; }
-  .gallery-page { padding: 110px 20px 60px; }
+  .feature-card { padding: 24px; }
+  .about-page { padding: 110px 16px 40px; }
+  .gallery-page { padding: 110px 16px 40px; }
   .gallery-grid { grid-template-columns: 1fr; }
   .section-head h2 { font-size: clamp(28px, 6vw, 42px); }
   .hero h1 { font-size: clamp(36px, 8vw, 60px); }
   .stage-empty { padding: 40px 16px; }
-  .cam-preview { width: 120px; bottom: 8px; right: 8px; }
+  .cam-preview { width: 100px; bottom: 8px; right: 8px; }
   .download-bar { flex-direction: column; gap: 10px; text-align: center; }
+  .footer { padding: 40px 16px; }
+  .footer-links { flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .about-grid { grid-template-columns: 1fr; }
+  .legal-card { padding: 24px; }
+  .setting-group select { width: 100%; }
+  .record-btn, .icon-btn { min-height: 40px; }
+  .hint { font-size: 12px; }
+  .eyebrow { font-size: 11px; padding: 5px 12px; }
+  .features-grid.features-alt { grid-template-columns: 1fr; }
+  .hero-actions { flex-direction: column; width: 100%; align-items: stretch; }
+  .hero-actions .btn-primary,
+  .hero-actions .btn-ghost { width: 100%; justify-content: center; }
+}
+
+
+/* ---------- dshader and background ---------- */
+.floating-nav {
+  position: fixed;
+  top: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 50px;
+  display: flex;
+  gap: 20px;
+}
+
+.glass-dock-preview {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 24px;
+  padding: 20px;
+  margin-top: 50px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1);
 }
