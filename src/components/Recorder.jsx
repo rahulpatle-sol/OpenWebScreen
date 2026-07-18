@@ -385,14 +385,24 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     return () => window.removeEventListener('mousemove', onMove)
   }, [])
 
-  function handleCanvasClick(e) {
+  function handleCanvasInteraction(clientX, clientY) {
     const canvas = canvasRef.current
+    if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const nx = (e.clientX - rect.left) / rect.width
-    const ny = (e.clientY - rect.top) / rect.height
+    if (rect.width === 0 || rect.height === 0) return
+    const nx = (clientX - rect.left) / rect.width
+    const ny = (clientY - rect.top) / rect.height
+    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return
     zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntRef.current }
     zoomUntilRef.current = performance.now() + 3000
     ripplesRef.current.push({ x: nx, y: ny, time: performance.now() })
+  }
+
+  function handleCanvasClick(e) { handleCanvasInteraction(e.clientX, e.clientY) }
+  function handleCanvasTouch(e) {
+    e.preventDefault()
+    const t = e.touches[0]
+    if (t) handleCanvasInteraction(t.clientX, t.clientY)
   }
 
   function showToast(message, type = 'error') {
@@ -401,6 +411,10 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   }
 
   async function startCapture() {
+    if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') {
+      showToast('Screen capture is not supported on this device. Please use a desktop browser.')
+      return
+    }
     setIsLoading(true)
     setToast(null)
     try {
@@ -628,7 +642,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
       </div>
 
       <div className="studio">
-        <div className="studio-stage" onClick={handleCanvasClick}>
+        <div className="studio-stage" onClick={handleCanvasClick} onTouchStart={handleCanvasTouch}>
           {!hasStream && !isLoading && (
             <div className="stage-empty">
               <div className="ring"><Monitor size={26} strokeWidth={1.5} /></div>
