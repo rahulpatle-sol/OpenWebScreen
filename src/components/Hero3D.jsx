@@ -1,58 +1,26 @@
 import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-gsap.registerPlugin(ScrollTrigger)
 
 export default function Hero3D({ onLaunch }) {
-  const containerRef = useRef(null)
-  const h1Ref = useRef(null)
-  const pRef = useRef(null)
-  const actionsRef = useRef(null)
-  
-  const laptopWrapRef = useRef(null)
-  const lidRef = useRef(null)
-  const videoRef = useRef(null)
-
-  // Mouse tracking for free 3D rotation
+  const wrapRef = useRef(null)
+  const mockRef = useRef(null)
   const mouse = useRef({ x: 0, y: 0 })
-  const current = useRef({ x: 0, y: 0 })
+  const cur = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
-    // Entrance
     const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
     tl.fromTo('.eyebrow', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 })
-      .fromTo(h1Ref.current, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, '-=0.3')
-      .fromTo(pRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.4')
-      .fromTo(actionsRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
-      .fromTo(laptopWrapRef.current, { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.8 }, '-=0.2')
+      .fromTo('h1', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, '-=0.3')
+      .fromTo('.hero-desc', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.4')
+      .fromTo('.hero-actions', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
+      .fromTo(mockRef.current, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, '-=0.2')
 
-    // Scroll animation
-    const scrollTl = gsap.timeline({
-      scrollTrigger: {
-        trigger: containerRef.current,
-        start: 'top top',
-        end: 'bottom top',
-        scrub: 1,
-        onUpdate: (self) => {
-          if (videoRef.current) {
-            if (self.progress > 0.3) videoRef.current.play().catch(() => {})
-            else videoRef.current.pause()
-          }
-        }
-      }
-    })
-    scrollTl
-      .to(lidRef.current, { rotateX: 0, ease: 'power2.out' }, 0)
-      .to(laptopWrapRef.current, { rotateX: 20, rotateY: -10, scale: 1.1, ease: 'power1.inOut' }, 0)
-
-    // Free mouse rotation - smooth ticker
     const ticker = gsap.ticker.add(() => {
-      const el = laptopWrapRef.current
+      const el = mockRef.current
       if (!el) return
-      current.current.x += (mouse.current.x - current.current.x) * 0.06
-      current.current.y += (mouse.current.y - current.current.y) * 0.06
-      el.style.transform = `rotateX(${20 + current.current.y * 12}deg) rotateY(${-10 + current.current.x * 18}deg)`
+      cur.current.x += (mouse.current.x - cur.current.x) * 0.05
+      cur.current.y += (mouse.current.y - cur.current.y) * 0.05
+      el.style.transform = `perspective(1200px) rotateY(${cur.current.x * 8}deg) rotateX(${-cur.current.y * 6}deg)`
     })
 
     function move(e) {
@@ -63,46 +31,37 @@ export default function Hero3D({ onLaunch }) {
 
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseleave', leave)
-
-    return () => {
-      tl.kill()
-      scrollTl.kill()
-      gsap.ticker.remove(ticker)
-      window.removeEventListener('mousemove', move)
-      window.removeEventListener('mouseleave', leave)
-    }
+    return () => { tl.kill(); gsap.ticker.remove(ticker); window.removeEventListener('mousemove', move); window.removeEventListener('mouseleave', leave) }
   }, [])
 
   return (
-    <div ref={containerRef} className="hero3d-simple-container">
-      <div className="hero3d-content">
+    <div ref={wrapRef} className="hero-simple">
+      <div className="hero-simple-inner">
         <div className="eyebrow">✦ 100% free · no signup · runs in your browser</div>
-        <h1 ref={h1Ref}>
-          Record smooth <em>cinematic</em> demos, right from the browser.
-        </h1>
-        <p ref={pRef}>
-          Auto-zoom on clicks, buttery cursor animations, and real-time tracking —
-          no install, no account, no upload. Everything renders on your machine.
+        <h1>Record smooth <em>cinematic</em> demos.</h1>
+        <p className="hero-desc">
+          Auto-zoom on clicks, cursor animations, real-time tracking —<br />
+          no install, no account, no upload. Everything local.
         </p>
-        <div className="hero-actions" ref={actionsRef}>
+        <div className="hero-actions">
           <button className="btn-primary" onClick={onLaunch}>Start Recording →</button>
           <a className="btn-ghost" href="#features">See features</a>
         </div>
       </div>
 
-      <div className="laptop-stage">
-        <div ref={laptopWrapRef} className="simple-laptop">
-          <div ref={lidRef} className="simple-lid">
-            <div className="simple-screen">
-              <video 
-                ref={videoRef}
-                src="https://assets.mixkit.co/videos/preview/mixkit-typing-on-a-lap-top-screen-close-up-34324-large.mp4" 
-                loop muted playsInline className="simple-video"
-              />
-            </div>
-          </div>
-          <div className="simple-base">
-            <div className="simple-trackpad" />
+      <div ref={mockRef} className="hero-mock">
+        <div className="mock-bar">
+          <span /><span /><span />
+          <span className="mock-title">OpenWebScreen — Screen Recording</span>
+        </div>
+        <div className="mock-body">
+          <div className="mock-sidebar" />
+          <div className="mock-main">
+            <div className="mock-row short" />
+            <div className="mock-row" />
+            <div className="mock-row" />
+            <div className="mock-row highlight" />
+            <div className="mock-row short" />
           </div>
         </div>
       </div>

@@ -27,12 +27,10 @@ test('nav links and dark mode toggle are visible on home', async ({ page }) => {
   await expect(page.locator('.nav-icon-btn')).toHaveCount(2)
 })
 
-test('3D laptop stage and its parts render', async ({ page }) => {
-  await expect(page.locator('.laptop-stage')).toBeVisible()
-  await expect(page.locator('.simple-laptop')).toBeVisible()
-  await expect(page.locator('.simple-lid')).toBeVisible()
-  await expect(page.locator('.simple-screen')).toBeVisible()
-  await expect(page.locator('.simple-base')).toBeVisible()
+test('mockup window with tilt renders', async ({ page }) => {
+  await expect(page.locator('.hero-mock')).toBeVisible()
+  await expect(page.locator('.mock-bar')).toBeVisible()
+  await expect(page.locator('.mock-body')).toBeVisible()
 })
 
 test('all 9 feature cards are rendered', async ({ page }) => {
@@ -136,7 +134,7 @@ test('brand and title are present', async ({ page }) => {
 test('navigate back home from studio via brand click', async ({ page }) => {
   await page.locator('.btn-primary').first().click()
   await page.locator('.brand').click()
-  await expect(page.locator('.hero3d-simple-container')).toBeVisible()
+  await expect(page.locator('.hero-simple')).toBeVisible()
 })
 
 test('section head renders on features', async ({ page }) => {
