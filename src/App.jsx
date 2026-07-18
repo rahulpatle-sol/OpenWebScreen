@@ -131,8 +131,10 @@ export default function App() {
             <div className="footer-links">
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('about') }}>About</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('features') }}>Features</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('studio') }}>Studio</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('privacy') }}>Privacy</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('terms') }}>Terms</a>
+              <a href="https://github.com/rahulpatle-sol/OpenWebScreen/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>
             </div>
           </footer>
         </>
