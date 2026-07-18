@@ -2,9 +2,11 @@ import { useState } from 'react'
 import Hero3D from './components/Hero3D.jsx'
 import Features from './components/Features.jsx'
 import Recorder from './components/Recorder.jsx'
+import Editor from './components/Editor.jsx'
 
 export default function App() {
-  const [view, setView] = useState('home') // 'home' | 'studio'
+  const [view, setView] = useState('home')
+  const [editBlob, setEditBlob] = useState(null)
 
   return (
     <div className="app">
@@ -25,11 +27,11 @@ export default function App() {
             <button className="nav-cta" onClick={() => setView('studio')}>Start Recording</button>
           </>
         ) : (
-          <button className="nav-cta" onClick={() => setView('home')}>← Home</button>
+          <button className="nav-cta" onClick={() => { setView('home'); setEditBlob(null) }}>← Home</button>
         )}
       </nav>
 
-      {view === 'home' ? (
+      {view === 'home' && (
         <>
           <div className="hero">
             <Hero3D onLaunch={() => setView('studio')} />
@@ -39,8 +41,16 @@ export default function App() {
             Lumen — built with React · runs 100% in your browser · no data ever leaves your device
           </footer>
         </>
-      ) : (
-        <Recorder />
+      )}
+
+      {view === 'studio' && (
+        <Recorder
+          onEdit={(blob) => { setEditBlob(blob); setView('editor') }}
+        />
+      )}
+
+      {view === 'editor' && editBlob && (
+        <Editor blob={editBlob} onBack={() => setView('studio')} />
       )}
     </div>
   )

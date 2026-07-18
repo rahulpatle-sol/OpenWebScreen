@@ -45,6 +45,8 @@ export default function Recorder({ onEdit }) {
   const tempCanvasRef = useRef(null)
   const zoomIntensityRef = useRef(null)
   const ripplesRef = useRef([])
+  const micAnalyserRef = useRef(null)
+  const micLevelRef = useRef(0)
 
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -62,6 +64,9 @@ export default function Recorder({ onEdit }) {
   const [padding, setPadding] = useState(48)
   const [cornerRadius, setCornerRadius] = useState(16)
   const [zoomIntensity, setZoomIntensity] = useState(1.6)
+  const [isLoading, setIsLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [countdown, setCountdown] = useState(null)
 
   zoomIntensityRef.current = zoomIntensity
 
@@ -271,6 +276,18 @@ export default function Recorder({ onEdit }) {
       }
     }
 
+    // ---------------- mic level sampling ----------------
+    if (micAnalyserRef.current) {
+      const data = new Uint8Array(micAnalyserRef.current.frequencyBinCount)
+      micAnalyserRef.current.getByteTimeDomainData(data)
+      let sum = 0
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i] - 128
+        sum += v * v
+      }
+      micLevelRef.current = Math.min(1, Math.sqrt(sum / data.length) / 128 * 3)
+    }
+
     rafRef.current = requestAnimationFrame(draw)
   }, [autoZoom, motionBlur, webcamOn, bgPreset, padding, cornerRadius])
 
@@ -336,7 +353,14 @@ export default function Recorder({ onEdit }) {
   }
   function handleCanvasMouseUp() { draggingCamRef.current = false }
 
+  function showToast(message, type = 'error') {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
   async function startCapture() {
+    setIsLoading(true)
+    setToast(null)
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 30, cursor: 'always' },
@@ -347,7 +371,13 @@ export default function Recorder({ onEdit }) {
       await videoRef.current.play()
       setHasStream(true)
       stream.getVideoTracks()[0].addEventListener('ended', stopEverything)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+        showToast(err.message || 'Failed to share screen')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   async function toggleWebcam() {
@@ -357,30 +387,48 @@ export default function Recorder({ onEdit }) {
       setWebcamOn(false)
       return
     }
+    setIsLoading(true)
     try {
       const cam = await navigator.mediaDevices.getUserMedia({ video: true })
       camStreamRef.current = cam
       camVideoRef.current.srcObject = cam
       await camVideoRef.current.play()
       setWebcamOn(true)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      showToast(err.message || 'Failed to access webcam')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   async function toggleMic() {
     if (micOn) {
+      if (micAnalyserRef.current) {
+        micAnalyserRef.current.disconnect()
+        micAnalyserRef.current = null
+      }
       micStreamRef.current?.getTracks().forEach(t => t.stop())
       micStreamRef.current = null
       setMicOn(false)
+      micLevelRef.current = 0
       return
     }
     try {
       const mic = await navigator.mediaDevices.getUserMedia({ audio: true })
       micStreamRef.current = mic
+      const audioCtx = new AudioContext()
+      const src = audioCtx.createMediaStreamSource(mic)
+      const analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 256
+      src.connect(analyser)
+      micAnalyserRef.current = analyser
       setMicOn(true)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      showToast(err.message || 'Failed to access microphone')
+    }
   }
 
-  function startRecording() {
+  function beginRecording() {
     const canvasStream = canvasRef.current.captureStream(30)
     const audioTracks = []
     if (streamRef.current) audioTracks.push(...streamRef.current.getAudioTracks())
@@ -404,6 +452,20 @@ export default function Recorder({ onEdit }) {
     setIsPaused(false)
     setElapsed(0)
     timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+  }
+
+  function startRecording() {
+    setCountdown(3)
+    let c = 3
+    const iv = setInterval(() => {
+      c--
+      if (c > 0) { setCountdown(c) }
+      else {
+        clearInterval(iv)
+        setCountdown(null)
+        beginRecording()
+      }
+    }, 800)
   }
 
   function togglePause() {
@@ -437,6 +499,8 @@ export default function Recorder({ onEdit }) {
       if (e.code === 'Space' && hasStream) {
         e.preventDefault()
         isRecording ? stopRecording() : startRecording()
+      } else if (e.key.toLowerCase() === 'p' && isRecording) {
+        togglePause()
       } else if (e.key.toLowerCase() === 'z') {
         setAutoZoom(z => !z)
       } else if (e.key.toLowerCase() === 'b') {
@@ -478,10 +542,16 @@ export default function Recorder({ onEdit }) {
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
         >
-          {!hasStream && (
+          {!hasStream && !isLoading && (
             <div className="stage-empty">
               <div className="ring"><Monitor size={26} strokeWidth={1.5} /></div>
               <div>Click "Share Screen" to begin</div>
+            </div>
+          )}
+          {isLoading && (
+            <div className="stage-empty">
+              <div className="spinner" />
+              <div>Please select a screen or window...</div>
             </div>
           )}
           <canvas ref={canvasRef} style={{ display: hasStream ? 'block' : 'none' }} />
@@ -489,6 +559,11 @@ export default function Recorder({ onEdit }) {
             <div className="rec-badge">
               <span className="rec-dot" />
               {isPaused ? 'PAUSED' : 'REC'} · {fmt(elapsed)}
+            </div>
+          )}
+          {countdown && (
+            <div className="countdown-overlay">
+              <span className="countdown-num">{countdown}</span>
             </div>
           )}
           <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
@@ -522,6 +597,11 @@ export default function Recorder({ onEdit }) {
             <button className="icon-btn" onClick={toggleMic} title="Toggle Microphone">
               {micOn ? <Mic size={16} /> : <MicOff size={16} />}
             </button>
+            {micOn && (
+              <div className="mic-level">
+                <div className="mic-level-bar" style={{ scale: `1 ${micLevelRef.current}`, transformOrigin: 'bottom' }} />
+              </div>
+            )}
           </div>
           <div className="controls-right">
             <label className="toggle">
@@ -593,8 +673,15 @@ export default function Recorder({ onEdit }) {
         )}
       </div>
 
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+
       <div className="hint-row">
         <span className="hint">Space — start/stop recording</span>
+        <span className="hint">P — pause/resume</span>
         <span className="hint">Z — toggle auto-zoom</span>
         <span className="hint">B — toggle motion blur</span>
         <span className="hint">Click canvas — manual zoom-to-point</span>
