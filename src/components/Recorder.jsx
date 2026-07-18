@@ -44,8 +44,6 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
   const zoomCurrentRef = useRef({ x: 0.5, y: 0.5, scale: 1 })
   const zoomUntilRef = useRef(0)
   const lastMouseRef = useRef({ x: 0.5, y: 0.5 })
-  const camPosRef = useRef({ x: 24, y: 24 })
-  const draggingCamRef = useRef(false)
   const frameCountRef = useRef(0)
   const lastDomMouseRef = useRef(0)
   const tempCanvasRef = useRef(null)
@@ -180,16 +178,17 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
 
   // ---------------- draw loop ----------------
   const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    const video = videoRef.current
-    if (!canvas || !video || video.readyState < 2) {
-      rafRef.current = requestAnimationFrame(draw)
-      return
-    }
-    const ctx = canvas.getContext('2d')
-    const vw = video.videoWidth
-    const vh = video.videoHeight
-    if (!vw || !vh) { rafRef.current = requestAnimationFrame(draw); return }
+    try {
+      const canvas = canvasRef.current
+      const video = videoRef.current
+      if (!canvas || !video || video.readyState < 2) {
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
+      const ctx = canvas.getContext('2d')
+      const vw = video.videoWidth
+      const vh = video.videoHeight
+      if (!vw || !vh) { rafRef.current = requestAnimationFrame(draw); return }
 
     const pad = padding
     const outW = vw + pad * 2
@@ -220,9 +219,9 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     const targetScale = active ? t.scale : 1
     const targetX = active ? t.x : 0.5
     const targetY = active ? t.y : 0.5
-    z.scale = lerp(z.scale, targetScale, 0.1)
-    z.x = lerp(z.x, targetX, 0.1)
-    z.y = lerp(z.y, targetY, 0.1)
+    z.scale = lerp(z.scale, targetScale, 0.15)
+    z.x = lerp(z.x, targetX, 0.15)
+    z.y = lerp(z.y, targetY, 0.15)
 
     ctx.save()
     roundRectPath(ctx, pad, pad, vw, vh, cornerRadius)
@@ -244,8 +243,8 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
 
     if (webcamOn && camVideoRef.current && camVideoRef.current.readyState >= 2) {
       const camSize = 160
-      const cx = camPosRef.current.x
-      const cy = camPosRef.current.y
+      const cx = outW - camSize - 24
+      const cy = outH - camSize - 24
       ctx.save()
       ctx.beginPath()
       ctx.arc(cx + camSize / 2, cy + camSize / 2, camSize / 2, 0, Math.PI * 2)
@@ -349,6 +348,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     }
 
     rafRef.current = requestAnimationFrame(draw)
+    } catch (e) { rafRef.current = requestAnimationFrame(draw) }
   }, [autoZoom, motionBlur, webcamOn, bgPreset, customColor, customImage, padding, cornerRadius, performanceMode])
 
   useEffect(() => {
@@ -375,10 +375,10 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
       const ny = (e.clientY - rect.top) / rect.height
       if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return
       const last = lastMouseRef.current
-      if (Math.hypot(nx - last.x, ny - last.y) < 0.008) return
+      if (Math.hypot(nx - last.x, ny - last.y) < 0.005) return
       lastMouseRef.current = { x: nx, y: ny }
       zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntRef.current }
-      zoomUntilRef.current = performance.now() + 1800
+      zoomUntilRef.current = performance.now() + 2200
       lastDomMouseRef.current = performance.now()
     }
     window.addEventListener('mousemove', onMove)
@@ -391,34 +391,9 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     const nx = (e.clientX - rect.left) / rect.width
     const ny = (e.clientY - rect.top) / rect.height
     zoomTargetRef.current = { x: nx, y: ny, scale: zoomIntRef.current }
-    zoomUntilRef.current = performance.now() + 2500
+    zoomUntilRef.current = performance.now() + 3000
     ripplesRef.current.push({ x: nx, y: ny, time: performance.now() })
   }
-
-  function handleCanvasMouseDown(e) {
-    if (!webcamOn) return
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const mx = (e.clientX - rect.left) * scaleX
-    const my = (e.clientY - rect.top) * scaleY
-    const { x, y } = camPosRef.current
-    if (mx > x && mx < x + 160 && my > y && my < y + 160) {
-      draggingCamRef.current = { offX: mx - x, offY: my - y }
-    }
-  }
-  function handleCanvasMouseMove(e) {
-    if (!draggingCamRef.current) return
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const mx = (e.clientX - rect.left) * scaleX
-    const my = (e.clientY - rect.top) * scaleY
-    camPosRef.current = { x: mx - draggingCamRef.current.offX, y: my - draggingCamRef.current.offY }
-  }
-  function handleCanvasMouseUp() { draggingCamRef.current = false }
 
   function showToast(message, type = 'error') {
     setToast({ message, type })
@@ -513,15 +488,9 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
     chunksRef.current = []
     let fmt = FORMATS.find(f => f.id === formatId) || supportedFormats[0]
     const hasAudio = audioTracks.length > 0
-    // When audio is present, use a codec that supports both audio+video.
-    // isTypeSupported lies for VP8 — it returns true for video-only but
-    // MediaRecorder.start throws when an audio track is attached.
     let mime = fmt.mime
     if (hasAudio) {
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'
-      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) mime = 'video/webm;codecs=vp8,opus'
-      else if (MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm'
-      else mime = 'video/webm'
+      mime = 'video/webm'
     }
     const recorder = new MediaRecorder(canvasStream, { mimeType: mime, videoBitsPerSecond: q.bits })
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
@@ -659,13 +628,7 @@ export default function Recorder({ onEdit, onRecordingComplete }) {
       </div>
 
       <div className="studio">
-        <div
-          className="studio-stage"
-          onClick={handleCanvasClick}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-        >
+        <div className="studio-stage" onClick={handleCanvasClick}>
           {!hasStream && !isLoading && (
             <div className="stage-empty">
               <div className="ring"><Monitor size={26} strokeWidth={1.5} /></div>
