@@ -4,34 +4,34 @@ import gsap from 'gsap'
 export default function Hero3D({ onLaunch }) {
   const wrapRef = useRef(null)
   const mockRef = useRef(null)
-  const mouse = useRef({ x: 0, y: 0 })
-  const cur = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
+    const mock = mockRef.current
+    if (!mock) return
+
     const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
     tl.fromTo('.eyebrow', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 })
       .fromTo('h1', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, '-=0.3')
       .fromTo('.hero-desc', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.4')
       .fromTo('.hero-actions', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
-      .fromTo(mockRef.current, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, '-=0.2')
+      .fromTo(mock, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, '-=0.2')
 
-    const ticker = gsap.ticker.add(() => {
-      const el = mockRef.current
-      if (!el) return
-      cur.current.x += (mouse.current.x - cur.current.x) * 0.05
-      cur.current.y += (mouse.current.y - cur.current.y) * 0.05
-      el.style.transform = `perspective(1200px) rotateY(${cur.current.x * 8}deg) rotateX(${-cur.current.y * 6}deg)`
-    })
+    const rotY = gsap.quickTo(mock, 'rotationY', { duration: 1.2, ease: 'power2.out' })
+    const rotX = gsap.quickTo(mock, 'rotationX', { duration: 1.2, ease: 'power2.out' })
+
+    gsap.set(mock, { transformPerspective: 1200 })
 
     function move(e) {
-      mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2
-      mouse.current.y = (e.clientY / window.innerHeight - 0.5) * 2
+      const x = (e.clientX / window.innerWidth - 0.5) * 2
+      const y = (e.clientY / window.innerHeight - 0.5) * 2
+      rotY(x * 7)
+      rotX(-y * 5)
     }
-    function leave() { mouse.current.x = 0; mouse.current.y = 0 }
+    function leave() { rotY(0); rotX(0) }
 
     window.addEventListener('mousemove', move)
     window.addEventListener('mouseleave', leave)
-    return () => { tl.kill(); gsap.ticker.remove(ticker); window.removeEventListener('mousemove', move); window.removeEventListener('mouseleave', leave) }
+    return () => { tl.kill(); window.removeEventListener('mousemove', move); window.removeEventListener('mouseleave', leave) }
   }, [])
 
   return (
